@@ -8,7 +8,8 @@ import '../modbus.dart';
 import 'exceptions.dart';
 import 'util.dart';
 
-typedef void CompleterCallback(Completer completer, int function, Uint8List data);
+typedef void CompleterCallback(
+    Completer completer, int function, Uint8List data);
 
 /// MODBUS client
 /// http://www.modbus.org/docs/Modbus_Application_Protocol_V1_1b.pdf
@@ -61,8 +62,10 @@ class ModbusClientImpl extends ModbusClient {
   }
 
   void _onConnectorError(error, stackTrace) {
-    _waitingMap.values.forEach((element) => element.completeError(error, stackTrace));
-    _pendingMap.values.forEach((element) => element.completer.completeError(error, stackTrace));
+    _waitingMap.values
+        .forEach((element) => element.completeError(error, stackTrace));
+    _pendingMap.values.forEach(
+        (element) => element.completer.completeError(error, stackTrace));
 
     _pendingMap.clear();
     _waitingMap.clear();
@@ -71,12 +74,15 @@ class ModbusClientImpl extends ModbusClient {
   }
 
   void _onConnectorClose() {
-    _waitingMap.values.forEach((element) => element.completeError(ModbusConnectException("Connector was closed before operation was completed")));
-    _pendingMap.values.forEach((element) => element.completer.completeError(ModbusConnectException("Connector was closed before operation was completed")));
+    _waitingMap.values.forEach((element) => element.completeError(
+        ModbusConnectException(
+            "Connector was closed before operation was completed")));
+    _pendingMap.values.forEach((element) => element.completer.completeError(
+        ModbusConnectException(
+            "Connector was closed before operation was completed")));
 
     _pendingMap.clear();
     _waitingMap.clear();
-
   }
 
   void _sendData(int function, Uint8List data) {
@@ -263,7 +269,8 @@ class ModbusClientImpl extends ModbusClient {
     var response = await executeFunction(ModbusFunctions.writeSingleCoil, data);
     var responseView = ByteData.view(response.buffer);
 
-    return responseView.getUint16(2) == 0xff00 ? true : false;
+    //return responseView.getUint16(2) == 0xff00 ? true : false;
+    return responseView.getUint16(4) == 0xff00 ? true : false;
   }
 
   @override
@@ -330,6 +337,7 @@ class ModbusClientImpl extends ModbusClient {
     await executeFunction(ModbusFunctions.writeMultipleRegisters, data);
   }
 }
+
 class PendingKey {
   int function;
   PendingKey(this.function);
@@ -351,8 +359,8 @@ class PendingKey {
   String toString() {
     return 'PendingKey($hashCode)';
   }
-
 }
+
 class PendingCallback {
   Completer<Uint8List> completer;
   CompleterCallback callback;
@@ -362,6 +370,7 @@ class PendingCallback {
     callback(completer, function, data);
   }
 }
+
 class Request {
   int function;
   Uint8List data;
