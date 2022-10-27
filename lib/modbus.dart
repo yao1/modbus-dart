@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
+
 import 'src/client.dart';
 import 'src/tcp_connector.dart';
+
 export 'src/exceptions.dart';
 export 'src/tcp_connector.dart';
 
@@ -91,7 +93,7 @@ abstract class ModbusClient {
   Future<void> writeMultipleRegisters(int address, Uint16List values);
 }
 
-ModbusClient createClient(TcpConnector connector, {int unitId = 1}) =>
+ModbusClient createClient(ModbusConnector connector, {int unitId = 1}) =>
     ModbusClientImpl(connector, unitId);
 
 ModbusClient createTcpClient(address,

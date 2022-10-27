@@ -46,9 +46,10 @@ class TcpConnector extends ModbusConnector {
   void _onData(List<int> tcpData) {
     if (_mode == ModbusMode.ascii) tcpData = AsciiConverter.fromAscii(tcpData);
 
-    tcpBuffer = tcpBuffer + tcpData; //add new data to any data already in buffer
+    tcpBuffer =
+        tcpBuffer + tcpData; //add new data to any data already in buffer
     log.finest('RECV: ' + dumpHexToString(tcpBuffer));
-    while( tcpBuffer.length > 8) {
+    while (tcpBuffer.length > 8) {
       var view = ByteData.view(Uint8List.fromList(tcpBuffer).buffer);
       int tid = view.getUint16(0); // ignore: unused_local_variable
       int len = view.getUint16(4);
@@ -65,7 +66,6 @@ class TcpConnector extends ModbusConnector {
         // not enough bytes in buffer - wait and hope that remaining data is in next TCP frame
         break;
       }
-
     }
   }
 
@@ -73,21 +73,50 @@ class TcpConnector extends ModbusConnector {
   void write(int function, Uint8List data) {
     _tid++;
 
-    Uint8List tcpHeader = Uint8List(7); // Modbus Application Header
-    ByteData.view(tcpHeader.buffer)
-      ..setUint16(0, _tid, Endian.big)
-      ..setUint16(4, 1 /*unitId*/ + 1 /*fn*/ + data.length, Endian.big)
-      ..setUint8(6, _unitId);
+    // Uint8List tcpHeader = Uint8List(7); // Modbus Application Header
+    // ByteData.view(tcpHeader.buffer)
+    //   ..setUint16(0, _tid, Endian.big)
+    //   ..setUint16(4, 1 /*unitId*/ + 1 /*fn*/ + data.length, Endian.big)
+    //   ..setUint8(6, _unitId);
+
+    //为了现场测试，暂时修改一下tcp header内容，之后恢复为上面header
+    Uint8List tcpHeader = Uint8List(1); // Modbus Application Header
+    ByteData.view(tcpHeader.buffer)..setUint8(0, _unitId);
 
     Uint8List fn = Uint8List(1); // Modbus Application Header
     ByteData.view(fn.buffer).setUint8(0, function);
 
-    Uint8List tcpData = Uint8List.fromList(tcpHeader + fn + data);
+    Uint8List tcpData = Uint8List.fromList(
+        tcpHeader + fn + data + getCRC(tcpHeader + fn + data));
 
     log.finest('SEND: ' + dumpHexToString(tcpData));
 
     if (_mode == ModbusMode.ascii) tcpData = AsciiConverter.toAscii(tcpData);
 
     _socket!.add(tcpData);
+  }
+
+  static Uint8List getCRC(List list) {
+    int CRC = 0x000ffff;
+    int POLYNOMIAL = 0X0000a001;
+    int i, j;
+    int length = list.length;
+    for (i = 0; i < length; i++) {
+      CRC ^= (list[i]);
+      for (j = 0; j < 8; j++) {
+        if (CRC & 0x00000001 == 1) {
+          CRC >>= 1;
+          CRC ^= POLYNOMIAL;
+        } else {
+          CRC >>= 1;
+        }
+      }
+    }
+    CRC = ((CRC & 0x0000FF00) >> 8) | ((CRC & 0x000000FF) << 8);
+    var checknode = CRC.toRadixString(16);
+    //print("校验码:"+checknode);
+    Uint8List crcUint8List = Uint8List(2); // Modbus Application Header
+    ByteData.view(crcUint8List.buffer).setUint16(0, CRC, Endian.big);
+    return crcUint8List;
   }
 }
